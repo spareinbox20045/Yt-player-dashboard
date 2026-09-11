@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Dashboard</title>
+<style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #0b0c10; color: #c5c6c7; margin: 0; padding: 20px; }
+    h1 { color: #66fcf1; margin: 0; font-size: 24px; text-shadow: 0 0 10px rgba(102,252,241,0.2); }
+    .main-layout { display: flex; flex-direction: column; gap: 20px; max-width: 1400px; margin: 0 auto; }
+
+    .top-nav { display: flex; justify-content: space-between; align-items: center; background: #1f2833; padding: 15px 25px; border-radius: 12px; flex-wrap: wrap; gap: 10px; }
+    .controls-group { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .nav-btn { background: #121212; color: #66fcf1; border: 1px solid #66fcf1; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.2s; }
+    .nav-btn:hover, .nav-btn.active { background: #66fcf1; color: #000; }
+    select.nav-btn { appearance: none; -webkit-appearance: none; }
+    .icon-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px; }
+
+    .import-bar { background: #1f2833; border-radius: 12px; padding: 18px 22px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .import-bar input[type="text"] { flex: 1; min-width: 220px; background: #0b0c10; border: 1px solid #2f3e46; color: #c5c6c7; padding: 9px 12px; border-radius: 6px; font-size: 13px; }
+    .import-bar input[type="text"]:focus { outline: none; border-color: #45f3ff; }
+    .import-divider { color: #555; font-size: 12px; padding: 0 4px; }
+    .import-status { font-size: 12px; color: #959da5; width: 100%; }
+    .import-status.error { color: #ff6b6b; }
+    .import-status.ok { color: #2ecc71; }
+
+    .empty-state { background: #1f2833; border: 1px dashed #45f3ff; border-radius: 12px; padding: 30px; text-align: center; }
+    .empty-state p { font-size: 15px; margin-bottom: 15px; }
+    .chip-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .chip { background: #121212; border: 1px solid #45f3ff; color: #45f3ff; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .chip:hover { background: #45f3ff; color: #000; }
+    .chip .del-x { color: #ff6b6b; font-weight: bold; padding: 0 4px; }
+    .chip:hover .del-x { color: #ff2020; }
+    .chip .type-tag { font-size: 11px; opacity: 0.8; }
+
+    .insights-panel { display: none; background: #121212; border: 1px solid #66fcf1; padding: 20px; border-radius: 10px; }
+    .insights-panel h2 { margin: 0 0 15px 0; font-size: 16px; color: #66fcf1; }
+    .insights-panel h3 { font-size: 13px; color: #959da5; margin: 20px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .stat-box { background: #1f2833; border: 1px solid #2f3e46; border-radius: 8px; padding: 12px 15px; }
+    .stat-box .stat-value { font-size: 22px; font-weight: bold; color: #45f3ff; }
+    .stat-box .stat-label { font-size: 11px; color: #959da5; margin-top: 4px; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; max-width: 280px; margin-top: 10px; }
+    .day-box { aspect-ratio: 1; background: #1f2833; border-radius: 3px; font-size: 10px; display: flex; align-items: center; justify-content: center; color: #555; }
+
+    .permission-banner { display: none; background: #2a1f1f; border: 1px solid #ff6b6b; color: #ffb3b3; padding: 12px 18px; border-radius: 8px; font-size: 13px; align-items: center; justify-content: space-between; gap: 10px; }
+
+    .player-container { background: #121212; border-radius: 12px; overflow: hidden; display: none; border: 2px solid #45f3ff; box-shadow: 0 0 20px rgba(69,243,255,0.15); }
+    .player-topbar { padding: 12px 20px; color: #45f3ff; font-weight: bold; background: #121212; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .speed-group { display: flex; gap: 6px; }
+    .speed-btn { background: #0b0c10; color: #959da5; border: 1px solid #2f3e46; padding: 4px 9px; border-radius: 5px; font-size: 11px; cursor: pointer; }
+    .speed-btn.active, .speed-btn:hover { color: #000; background: #45f3ff; border-color: #45f3ff; }
+    #player-media-wrap { width: 100%; aspect-ratio: 16/9; background: #000; position: relative; }
+    #player-media-wrap iframe, #local-player { width: 100%; height: 100%; display: block; }
+
+    .progress-container { background: #1f2833; border-radius: 8px; padding: 12px 20px; display: none; }
+    .progress-bar-bg { background: #0b0c10; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 5px; }
+    .progress-bar { background: linear-gradient(90deg, #66fcf1, #45f3ff); height: 100%; width: 0%; transition: width 0.6s cubic-bezier(.22,.61,.36,1); }
+
+    .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .list-view { display: flex; flex-direction: column; gap: 8px; }
+
+    .card { background: #1f2833; border: 2px solid #2f3e46; border-radius: 10px; overflow: hidden; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; display: flex; animation: fadeInUp 0.4s ease both; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 10px 22px rgba(69,243,255,0.15); border-color: #45f3ff; }
+    .grid-view .card { flex-direction: column; }
+    .grid-view .thumb-wrapper { width: 100%; aspect-ratio: 16/9; }
+    .list-view .card { flex-direction: row; align-items: center; padding: 6px 12px; height: 50px; }
+    .list-view .thumb-wrapper { display: none; }
+    .list-view .card-info { padding: 0; width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
+    .list-view .title { margin: 0; height: auto; -webkit-line-clamp: 1; font-size: 14px; }
+    .list-view .card-actions { border: none; padding: 0; margin: 0; }
+
+    .thumb-wrapper { position: relative; overflow: hidden; background: linear-gradient(135deg, #1f2833, #0b0c10); display: flex; align-items: center; justify-content: center; }
+    .thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+    .thumb-wrapper .thumb-icon { font-size: 32px; color: #fff; opacity: 0; transition: opacity 0.2s ease; z-index: 2; text-shadow: 0 0 8px rgba(0,0,0,0.8); }
+    .card:hover .thumb-wrapper .thumb-icon { opacity: 1; }
+    .thumb-wrapper .thumb-index { position: absolute; top: 8px; left: 10px; font-size: 11px; color: #66fcf1; font-weight: bold; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 10px; z-index: 2; }
+    .card-info { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .title { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.4; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 36px; }
+    .card-actions { border-top: 1px solid #2f3e46; padding-top: 10px; }
+    .checkbox-container { display: flex; align-items: center; font-size: 12px; }
+    .checkbox-container input { margin-right: 6px; cursor: pointer; transition: transform 0.15s ease; }
+    .checkbox-container input:checked { transform: scale(1.2); }
+
+    .card.active-playing { border-color: #45f3ff !important; background: #13222d; animation: pulseGlow 1.8s ease-in-out infinite; }
+    .card.completed-lecture { border-color: #2ecc71 !important; background: #14251c; }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 10px rgba(69,243,255,0.35); } 50% { box-shadow: 0 0 22px rgba(69,243,255,0.75); } }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .insights-panel[style*="block"] { animation: slideDown 0.25s ease; }
+</style>
+</head>
+<body>
+
+<div class="main-layout">
+    <div class="top-nav">
+        <h1 id="page-title">📚 Study Dashboard</h1>
+        <div class="controls-group">
+            <select id="playlist-select" class="nav-btn">
+                <option value="" disabled selected>Select Playlist</option>
+            </select>
+            <button class="nav-btn" onclick="toggleInsightsModal()">📊 Insights</button>
+            <button class="nav-btn active" id="btn-grid" onclick="setView('grid')">Grid</button>
+            <button class="nav-btn" id="btn-list" onclick="setView('list')">List</button>
+            <button class="nav-btn icon-btn" title="YouTube API key" onclick="promptApiKey()">🔑</button>
+        </div>
+    </div>
+
+    <div class="import-bar">
+        <input type="text" id="import-url" placeholder="Paste a YouTube playlist or video link...">
+        <button class="nav-btn" onclick="handleImport()">➕ Import Link</button>
+        <span class="import-divider">— or —</span>
+        <button class="nav-btn" onclick="addLocalFolder()">📁 Add Local Folder</button>
+        <div class="import-status" id="import-status"></div>
+    </div>
+
+    <div class="permission-banner" id="permission-banner">
+        <span>⚠️ Is folder ko dobara access allow karo taaki videos load ho sakein.</span>
+        <button class="nav-btn" onclick="retryPermission()">Allow Access</button>
+    </div>
+
+    <div class="insights-panel" id="insights-panel">
+        <h2>Your Learning Insights</h2>
+        <div class="stat-grid" id="insights-stat-grid"></div>
+        <h3>Last 28 Days Consistency (this playlist)</h3>
+        <div class="calendar-grid" id="streak-grid"></div>
+    </div>
+
+    <div class="empty-state" id="empty-state">
+        <p>👋 Upar se ek YouTube link paste karke Import karo, ya ek downloaded folder add karo, ya niche se saved playlist choose karo.</p>
+        <div class="chip-list" id="playlist-chip-list"></div>
+    </div>
+
+    <div class="player-container" id="player-frame">
+        <div class="player-topbar">
+            <span id="now-playing-title">Loading...</span>
+            <div class="speed-group" id="speed-group">
+                <button class="speed-btn active" data-rate="1">1x</button>
+                <button class="speed-btn" data-rate="1.5">1.5x</button>
+                <button class="speed-btn" data-rate="2">2x</button>
+                <button class="speed-btn" data-rate="3">3x</button>
+                <button class="speed-btn" data-rate="4">4x</button>
+            </div>
+        </div>
+        <div id="player-media-wrap">
+            <div id="yt-player-wrap" style="width:100%;height:100%;"><div id="yt-player"></div></div>
+            <video id="local-player" style="display:none;background:#000;" controls></video>
+        </div>
+    </div>
+
+    <div class="progress-container" id="progress-section">
+        <div id="stats-text" style="font-size:14px; color:#959da5;">Loading progress...</div>
+        <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar"></div></div>
+    </div>
+
+    <div class="grid-view" id="playlist-container"></div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+    // ================= IndexedDB: persistent playlist + thumbnail cache =================
+    const DB_NAME = 'study_dashboard_db_v2';
+    const STORE_PLAYLISTS = 'playlists';
+    const STORE_THUMBS = 'thumbnails'; // only used for local-folder subjects
+
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(STORE_PLAYLISTS)) db.createObjectStore(STORE_PLAYLISTS, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(STORE_THUMBS)) db.createObjectStore(STORE_THUMBS, { keyPath: 'key' });
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function dbGetAllPlaylists() {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const req = db.transaction(STORE_PLAYLISTS, 'readonly').objectStore(STORE_PLAYLISTS).getAll();
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function dbGetPlaylist(id) {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const req = db.transaction(STORE_PLAYLISTS, 'readonly').objectStore(STORE_PLAYLISTS).get(id);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function dbPutPlaylist(playlist) {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_PLAYLISTS, 'readwrite');
+            tx.objectStore(STORE_PLAYLISTS).put(playlist);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+    async function dbDeletePlaylist(id) {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_PLAYLISTS, 'readwrite');
+            tx.objectStore(STORE_PLAYLISTS).delete(id);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+    async function dbGetThumb(key) {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const req = db.transaction(STORE_THUMBS, 'readonly').objectStore(STORE_THUMBS).get(key);
+            req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function dbPutThumb(key, blob) {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_THUMBS, 'readwrite');
+            tx.objectStore(STORE_THUMBS).put({ key, blob });
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    const ALLOWED_EXT = ['webm', 'mp4', 'mkv', 'avi', 'mov', 'flv'];
+
+    // ================= State =================
+    let currentPlaylistId = null;
+    let currentPlaylistType = null; // 'online' | 'local'
+    let currentVideos = [];         // online: [{videoId,title,thumbnail,position}]  local: [{fileName,position}]
+    let currentIdx = null;
+    let currentDirHandle = null;    // for local playlists, live FileSystemDirectoryHandle
+    let ytPlayer = null;
+    let ytReady = false;
+    let pendingVideoId = null;
+    let activeLocalBlobUrl = null;
+    const thumbObjectUrls = []; // track for revocation
+
+    // ================= API key handling (online) =================
+    function getApiKey() { return localStorage.getItem('yt_api_key') || ''; }
+    function promptApiKey() {
+        const existing = getApiKey();
+        const key = prompt('Apni YouTube Data API v3 key daalo (Google Cloud Console se, HTTP-referrer restricted):', existing);
+        if (key !== null) localStorage.setItem('yt_api_key', key.trim());
+    }
+
+    // ================= Online import (by link) =================
+    function parseYoutubeUrl(url) {
+        try {
+            const u = new URL(url.trim());
+            const listId = u.searchParams.get('list');
+            const videoId = u.searchParams.get('v') || (u.hostname.includes('youtu.be') ? u.pathname.slice(1) : null);
+            return { listId, videoId };
+        } catch (e) { return { listId: null, videoId: null }; }
+    }
+
+    function setImportStatus(msg, type) {
+        const el = document.getElementById('import-status');
+        el.textContent = msg;
+        el.className = 'import-status' + (type ? ' ' + type : '');
+    }
+
+    async function handleImport() {
+        const url = document.getElementById('import-url').value;
+        if (!url.trim()) return;
+        const apiKey = getApiKey();
+        if (!apiKey) { setImportStatus('⚠️ Pehle 🔑 button se apni YouTube API key set karo.', 'error'); return; }
+
+        const { listId, videoId } = parseYoutubeUrl(url);
+        if (!listId && !videoId) { setImportStatus('⚠️ Ye ek valid YouTube playlist/video link nahi lag raha.', 'error'); return; }
+
+        setImportStatus('⏳ Fetching from YouTube...', '');
+        try {
+            let videos = [];
+            let name = '';
+            if (listId) {
+                const res = await fetchPlaylistItems(listId, apiKey);
+                videos = res.videos;
+                name = res.name || ('Playlist ' + listId);
+            } else {
+                const res = await fetchSingleVideo(videoId, apiKey);
+                videos = [res];
+                name = res.title;
+            }
+            if (videos.length === 0) { setImportStatus('⚠️ Koi video nahi mila is link me.', 'error'); return; }
+
+            const id = listId ? ('pl_' + listId) : ('vid_' + videoId);
+            await dbPutPlaylist({ id, type: 'online', name, sourceUrl: url, videos, importedAt: Date.now() });
+            document.getElementById('import-url').value = '';
+            setImportStatus('✅ "' + name + '" imported (' + videos.length + ' videos).', 'ok');
+            await refreshPlaylistList();
+            openPlaylist(id);
+        } catch (err) {
+            setImportStatus('⚠️ Import fail hua: ' + err.message, 'error');
+        }
+    }
+
+    async function fetchPlaylistItems(listId, apiKey) {
+        let videos = [];
+        let pageToken = '';
+        let playlistName = null;
+        do {
+            const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${listId}&key=${apiKey}` + (pageToken ? `&pageToken=${pageToken}` : '');
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error.message);
+            data.items.forEach(item => {
+                const sn = item.snippet;
+                if (!sn.resourceId || !sn.resourceId.videoId) return;
+                videos.push({
+                    videoId: sn.resourceId.videoId,
+                    title: sn.title,
+                    thumbnail: (sn.thumbnails && (sn.thumbnails.medium || sn.thumbnails.default) || {}).url || '',
+                    position: sn.position
+                });
+            });
+            pageToken = data.nextPageToken || '';
+        } while (pageToken);
+
+        try {
+            const metaResp = await fetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${listId}&key=${apiKey}`);
+            const metaData = await metaResp.json();
+            if (metaData.items && metaData.items[0]) playlistName = metaData.items[0].snippet.title;
+        } catch (e) { /* best-effort */ }
+
+        videos.sort((a, b) => a.position - b.position);
+        return { videos, name: playlistName };
+    }
+
+    async function fetchSingleVideo(videoId, apiKey) {
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
+        if (!data.items || !data.items[0]) throw new Error('Video not found');
+        const sn = data.items[0].snippet;
+        return {
+            videoId,
+            title: sn.title,
+            thumbnail: (sn.thumbnails && (sn.thumbnails.medium || sn.thumbnails.default) || {}).url || '',
+            position: 0
+        };
+    }
+
+    // ================= Local folder import (downloaded videos) =================
+    function naturalCompare(a, b) {
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    async function addLocalFolder() {
+        if (!window.showDirectoryPicker) {
+            setImportStatus('⚠️ Ye feature sirf Chrome/Edge/Brave (desktop) me kaam karta hai.', 'error');
+            return;
+        }
+        try {
+            const dirHandle = await window.showDirectoryPicker();
+            const files = [];
+            for await (const [name, handle] of dirHandle.entries()) {
+                if (handle.kind !== 'file') continue;
+                const ext = name.split('.').pop().toLowerCase();
+                if (ALLOWED_EXT.includes(ext)) files.push(name);
+            }
+            if (files.length === 0) { setImportStatus('⚠️ Is folder me koi supported video file nahi mili.', 'error'); return; }
+            files.sort(naturalCompare);
+
+            const id = 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            const videos = files.map((fileName, i) => ({ fileName, position: i }));
+            await dbPutPlaylist({ id, type: 'local', name: dirHandle.name, dirHandle, videos, importedAt: Date.now() });
+            setImportStatus('✅ "' + dirHandle.name + '" added (' + videos.length + ' videos).', 'ok');
+            await refreshPlaylistList();
+            openPlaylist(id);
+        } catch (err) {
+            if (err.name !== 'AbortError') setImportStatus('⚠️ Folder add nahi hua: ' + err.message, 'error');
+        }
+    }
+
+    async function ensureFolderPermission(dirHandle) {
+        const opts = { mode: 'read' };
+        if ((await dirHandle.queryPermission(opts)) === 'granted') return true;
+        if ((await dirHandle.requestPermission(opts)) === 'granted') return true;
+        return false;
+    }
+
+    async function retryPermission() {
+        const playlist = await dbGetPlaylist(currentPlaylistId);
+        if (!playlist || !playlist.dirHandle) return;
+        const ok = await ensureFolderPermission(playlist.dirHandle);
+        if (ok) {
+            document.getElementById('permission-banner').style.display = 'none';
+            currentDirHandle = playlist.dirHandle;
+            renderPlaylist();
+            calculateMetrics();
+        }
+    }
+
+    async function getFileHandleByName(dirHandle, fileName) {
+        for await (const [name, handle] of dirHandle.entries()) {
+            if (name === fileName && handle.kind === 'file') return handle;
+        }
+        return null;
+    }
+
+    async function generateLocalThumbnail(subjectId, fileName, fileHandle) {
+        const cacheKey = subjectId + '::' + fileName;
+        const cached = await dbGetThumb(cacheKey);
+        if (cached) {
+            const url = URL.createObjectURL(cached);
+            thumbObjectUrls.push(url);
+            return url;
+        }
+        return new Promise(async (resolve) => {
+            try {
+                const file = await fileHandle.getFile();
+                const videoUrl = URL.createObjectURL(file);
+                const vid = document.createElement('video');
+                vid.src = videoUrl;
+                vid.muted = true;
+                vid.onloadedmetadata = () => { vid.currentTime = Math.min(vid.duration * 0.25, 2); };
+                vid.onseeked = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 320; canvas.height = 180;
+                    canvas.getContext('2d').drawImage(vid, 0, 0, 320, 180);
+                    canvas.toBlob(async (blob) => {
+                        URL.revokeObjectURL(videoUrl);
+                        if (blob) {
+                            await dbPutThumb(cacheKey, blob);
+                            const url = URL.createObjectURL(blob);
+                            thumbObjectUrls.push(url);
+                            resolve(url);
+                        } else resolve('');
+                    }, 'image/jpeg', 0.7);
+                };
+                vid.onerror = () => { URL.revokeObjectURL(videoUrl); resolve(''); };
+            } catch (e) { resolve(''); }
+        });
+    }
+
+    // ================= Playlist list UI (dropdown + chips) =================
+    async function refreshPlaylistList() {
+        const playlists = await dbGetAllPlaylists();
+        const select = document.getElementById('playlist-select');
+        select.innerHTML = '<option value="" disabled selected>Select Playlist</option>';
+        playlists.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = (p.type === 'local' ? '📁 ' : '🌐 ') + p.name;
+            select.appendChild(opt);
+        });
+        if (currentPlaylistId) select.value = currentPlaylistId;
+
+        const chipList = document.getElementById('playlist-chip-list');
+        chipList.innerHTML = '';
+        playlists.forEach(p => {
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.innerHTML = `<span class="type-tag">${p.type === 'local' ? '📁' : '🌐'}</span><span>${p.name}</span><span class="del-x" title="Remove">✕</span>`;
+            chip.querySelectorAll('span')[1].onclick = () => openPlaylist(p.id);
+            chip.querySelector('.del-x').onclick = async (e) => {
+                e.stopPropagation();
+                if (confirm(`"${p.name}" ko list se hata dein? (Files/progress delete nahi honge, sirf ye entry hategi)`)) {
+                    await dbDeletePlaylist(p.id);
+                    await refreshPlaylistList();
+                }
+            };
+            chipList.appendChild(chip);
+        });
+    }
+
+    document.getElementById('playlist-select').addEventListener('change', (e) => {
+        if (e.target.value) openPlaylist(e.target.value);
+    });
+
+    function openPlaylist(id) { loadDashboard(id); }
+
+    async function loadDashboard(id) {
+        const playlist = await dbGetPlaylist(id);
+        if (!playlist) return;
+        currentPlaylistId = id;
+        currentPlaylistType = playlist.type;
+        currentVideos = playlist.videos;
+        document.getElementById('permission-banner').style.display = 'none';
+
+        if (playlist.type === 'local') {
+            currentDirHandle = playlist.dirHandle;
+            const ok = await ensureFolderPermission(currentDirHandle);
+            if (!ok) {
+                document.getElementById('permission-banner').style.display = 'flex';
+            }
+        }
+
+        document.getElementById('page-title').innerText = (playlist.type === 'local' ? '📁 ' : '📚 ') + playlist.name;
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('progress-section').style.display = 'block';
+        renderPlaylist();
+        calculateMetrics();
+        await refreshPlaylistList();
+    }
+
+    // ================= Rendering playlist =================
+    function renderPlaylist() {
+        const container = document.getElementById('playlist-container');
+        container.innerHTML = '';
+
+        currentVideos.forEach((v, i) => {
+            const idx = i + 1;
+            const displayTitle = currentPlaylistType === 'local' ? v.fileName.replace(/\.[^/.]+$/, '') : v.title;
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.id = 'card-' + idx;
+            card.style.animationDelay = Math.min(i * 0.03, 0.6) + 's';
+            card.onclick = () => startLecture(idx);
+
+            const thumbWrap = document.createElement('div');
+            thumbWrap.className = 'thumb-wrapper';
+            const img = document.createElement('img');
+            img.loading = 'lazy';
+            if (currentPlaylistType === 'online') {
+                img.src = v.thumbnail;
+            } else if (currentDirHandle) {
+                getFileHandleByName(currentDirHandle, v.fileName).then(handle => {
+                    if (handle) generateLocalThumbnail(currentPlaylistId, v.fileName, handle).then(url => { if (url) img.src = url; });
+                });
+            }
+            thumbWrap.appendChild(img);
+
+            const indexBadge = document.createElement('span');
+            indexBadge.className = 'thumb-index';
+            indexBadge.innerText = idx;
+            thumbWrap.appendChild(indexBadge);
+
+            const playIcon = document.createElement('span');
+            playIcon.className = 'thumb-icon';
+            playIcon.innerText = '▶';
+            thumbWrap.appendChild(playIcon);
+
+            const info = document.createElement('div');
+            info.className = 'card-info';
+
+            const title = document.createElement('div');
+            title.className = 'title';
+            title.title = displayTitle;
+            title.innerText = idx + '. ' + displayTitle;
+
+            const actions = document.createElement('div');
+            actions.className = 'card-actions';
+            actions.onclick = (e) => e.stopPropagation();
+            actions.innerHTML = `<div class="checkbox-container"><input type="checkbox" id="check-${idx}"><label for="check-${idx}">Completed</label></div>`;
+            actions.querySelector('input').onchange = () => toggleComplete(idx);
+
+            info.appendChild(title);
+            info.appendChild(actions);
+            card.appendChild(thumbWrap);
+            card.appendChild(info);
+            container.appendChild(card);
+        });
+    }
+
+    function setView(viewType) {
+        const container = document.getElementById('playlist-container');
+        document.getElementById('btn-grid').classList.remove('active');
+        document.getElementById('btn-list').classList.remove('active');
+        if (viewType === 'grid') {
+            container.className = 'grid-view';
+            document.getElementById('btn-grid').classList.add('active');
+        } else {
+            container.className = 'list-view';
+            document.getElementById('btn-list').classList.add('active');
+        }
+    }
+
+    // ================= YouTube IFrame Player (online) =================
+    function onYouTubeIframeAPIReady() {
+        ytPlayer = new YT.Player('yt-player', {
+            height: '100%', width: '100%',
+            playerVars: { rel: 0 },
+            events: {
+                onReady: () => { ytReady = true; if (pendingVideoId) { ytPlayer.loadVideoById(pendingVideoId); pendingVideoId = null; } },
+                onStateChange: onPlayerStateChange
+            }
+        });
+    }
+
+    function onPlayerStateChange(event) {
+        if (event.data === YT.PlayerState.ENDED) advanceAfterComplete();
+    }
+
+    document.getElementById('local-player').addEventListener('ended', advanceAfterComplete);
+
+    function advanceAfterComplete() {
+        markCompleteIfNeeded(currentIdx);
+        const nextIdx = currentIdx + 1;
+        if (currentVideos[nextIdx - 1]) startLecture(nextIdx);
+    }
+
+    document.getElementById('speed-group').addEventListener('click', (e) => {
+        const btn = e.target.closest('.speed-btn');
+        if (!btn) return;
+        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const rate = parseFloat(btn.dataset.rate);
+        if (currentPlaylistType === 'online' && ytPlayer && ytReady) ytPlayer.setPlaybackRate(rate);
+        if (currentPlaylistType === 'local') document.getElementById('local-player').playbackRate = rate;
+    });
+
+    async function startLecture(idx) {
+        const frame = document.getElementById('player-frame');
+        if (currentIdx) document.getElementById('card-' + currentIdx).classList.remove('active-playing');
+        currentIdx = idx;
+        const video = currentVideos[idx - 1];
+        const displayTitle = currentPlaylistType === 'local' ? video.fileName.replace(/\.[^/.]+$/, '') : video.title;
+
+        frame.style.display = 'block';
+        document.getElementById('now-playing-title').innerText = 'Playing: ' + idx + '. ' + displayTitle;
+        document.getElementById('card-' + idx).classList.add('active-playing');
+        frame.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        const ytWrap = document.getElementById('yt-player-wrap');
+        const localPlayer = document.getElementById('local-player');
+
+        if (currentPlaylistType === 'online') {
+            localPlayer.pause();
+            localPlayer.style.display = 'none';
+            ytWrap.style.display = 'block';
+            if (ytReady && ytPlayer) ytPlayer.loadVideoById(video.videoId);
+            else pendingVideoId = video.videoId;
+        } else {
+            if (ytReady && ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+            ytWrap.style.display = 'none';
+            localPlayer.style.display = 'block';
+
+            if (!currentDirHandle) return;
+            const handle = await getFileHandleByName(currentDirHandle, video.fileName);
+            if (!handle) return;
+            const file = await handle.getFile();
+            if (activeLocalBlobUrl) URL.revokeObjectURL(activeLocalBlobUrl);
+            activeLocalBlobUrl = URL.createObjectURL(file);
+            localPlayer.src = activeLocalBlobUrl;
+            const activeRate = parseFloat(document.querySelector('.speed-btn.active').dataset.rate);
+            localPlayer.playbackRate = activeRate;
+            localPlayer.play();
+        }
+    }
+
+    function markCompleteIfNeeded(idx) {
+        const checkbox = document.getElementById('check-' + idx);
+        if (checkbox && !checkbox.checked) {
+            checkbox.checked = true;
+            toggleComplete(idx);
+        }
+    }
+
+    function toggleInsightsModal() {
+        const panel = document.getElementById('insights-panel');
+        const isOpening = panel.style.display !== 'block';
+        panel.style.display = isOpening ? 'block' : 'none';
+        if (isOpening) { buildStreakCalendar(); calculateInsights(); }
+    }
+
+    // ================= Progress / streak / insights (local storage, per playlist) =================
+    function videoKey(idx) {
+        const v = currentVideos[idx - 1];
+        return currentPlaylistType === 'online' ? v.videoId : String(idx - 1);
+    }
+
+    function toggleComplete(idx) {
+        const isChecked = document.getElementById('check-' + idx).checked;
+        const vKey = videoKey(idx);
+        const doneKey = 'dl_complete_' + currentPlaylistId + '_' + vKey;
+        const tsKey = 'dl_complete_ts_' + currentPlaylistId + '_' + vKey;
+        localStorage.setItem(doneKey, isChecked);
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const streakKey = 'streak_' + currentPlaylistId + '_' + todayStr;
+        let todayCount = parseInt(localStorage.getItem(streakKey) || '0');
+        if (isChecked) {
+            todayCount += 1;
+            localStorage.setItem(tsKey, new Date().toISOString());
+        } else {
+            todayCount = Math.max(0, todayCount - 1);
+            localStorage.removeItem(tsKey);
+        }
+        localStorage.setItem(streakKey, todayCount);
+
+        calculateMetrics();
+        if (document.getElementById('insights-panel').style.display === 'block') {
+            buildStreakCalendar();
+            calculateInsights();
+        }
+    }
+
+    function buildStreakCalendar() {
+        const grid = document.getElementById('streak-grid');
+        grid.innerHTML = '';
+        for (let i = 27; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const count = parseInt(localStorage.getItem('streak_' + currentPlaylistId + '_' + dateStr) || '0');
+            const box = document.createElement('div');
+            box.className = 'day-box';
+            box.title = dateStr + " : " + count + " videos checked";
+            if (count === 1) box.style.background = '#0e4429';
+            else if (count === 2) box.style.background = '#006d32';
+            else if (count >= 3) box.style.background = '#39d353';
+            grid.appendChild(box);
+        }
+    }
+
+    function calculateMetrics() {
+        const total = currentVideos.length;
+        let doneCount = 0;
+        for (let i = 1; i <= total; i++) {
+            const vKey = videoKey(i);
+            const status = localStorage.getItem('dl_complete_' + currentPlaylistId + '_' + vKey) === 'true';
+            const checkbox = document.getElementById('check-' + i);
+            if (checkbox) checkbox.checked = status;
+            const card = document.getElementById('card-' + i);
+            if (status) { card.classList.add('completed-lecture'); doneCount++; }
+            else { card.classList.remove('completed-lecture'); }
+        }
+        const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+        document.getElementById('stats-text').innerText = "Total progress: " + doneCount + " / " + total + " videos completed (" + pct + "%)";
+        document.getElementById('progress-bar').style.width = pct + '%';
+    }
+
+    function calculateInsights() {
+        const statGrid = document.getElementById('insights-stat-grid');
+
+        let currentStreak = 0, bestStreak = 0, runningStreak = 0, activeDays28 = 0;
+        for (let i = 0; i < 365; i++) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const count = parseInt(localStorage.getItem('streak_' + currentPlaylistId + '_' + dateStr) || '0');
+            if (i < 28 && count > 0) activeDays28++;
+            if (count > 0) { runningStreak++; bestStreak = Math.max(bestStreak, runningStreak); }
+            else runningStreak = 0;
+        }
+        for (let i = 0; i < 365; i++) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const count = parseInt(localStorage.getItem('streak_' + currentPlaylistId + '_' + dateStr) || '0');
+            if (count > 0) currentStreak++;
+            else if (i === 0) continue;
+            else break;
+        }
+
+        const total = currentVideos.length;
+        let doneCount = 0;
+        const timestamps = [];
+        for (let i = 1; i <= total; i++) {
+            const vKey = videoKey(i);
+            if (localStorage.getItem('dl_complete_' + currentPlaylistId + '_' + vKey) === 'true') {
+                doneCount++;
+                const ts = localStorage.getItem('dl_complete_ts_' + currentPlaylistId + '_' + vKey);
+                if (ts) timestamps.push(new Date(ts));
+            }
+        }
+        const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+        const remaining = total - doneCount;
+
+        let paceLabel = "Not enough data yet";
+        let etaLabel = "Complete a couple more videos to unlock this";
+        let weeklyCount = 0;
+
+        if (timestamps.length > 0) {
+            timestamps.sort((a, b) => a - b);
+            const firstTs = timestamps[0];
+            const now = new Date();
+            const daySpan = Math.max(1, Math.ceil((now - firstTs) / 86400000) + 1);
+            const pace = doneCount / daySpan;
+
+            const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            weeklyCount = timestamps.filter(t => t >= sevenDaysAgo).length;
+
+            paceLabel = pace >= 1 ? pace.toFixed(1) + " videos/day" : (1 / pace).toFixed(1) + " days/video";
+
+            if (remaining === 0) etaLabel = "Playlist complete! 🎉";
+            else if (pace > 0) {
+                const daysLeft = Math.ceil(remaining / pace);
+                const finishDate = new Date(); finishDate.setDate(finishDate.getDate() + daysLeft);
+                etaLabel = "~" + daysLeft + " days (around " + finishDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ")";
+            }
+        }
+
+        const stats = [
+            { value: currentStreak + " 🔥", label: "Current Streak (days)" },
+            { value: bestStreak, label: "Best Streak (days)" },
+            { value: activeDays28 + "/28", label: "Active Days (last 28)" },
+            { value: pct + "%", label: "This Playlist Completion" },
+            { value: doneCount + "/" + total, label: "Videos Done" },
+            { value: weeklyCount, label: "Videos This Week" },
+            { value: paceLabel, label: "Your Learning Pace" },
+            { value: etaLabel, label: "Est. Time To Finish" },
+        ];
+        statGrid.innerHTML = stats.map(s =>
+            `<div class="stat-box"><div class="stat-value">${s.value}</div><div class="stat-label">${s.label}</div></div>`
+        ).join('');
+    }
+
+    // ================= Boot =================
+    window.addEventListener('load', async () => {
+        if (!getApiKey()) setImportStatus('👋 Online link import ke liye 🔑 se apni YouTube API key set karo. Local folder ke liye key ki zaroorat nahi.', '');
+        await refreshPlaylistList();
+    });
+</script>
+</body>
+</html>
